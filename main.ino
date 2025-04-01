@@ -21,6 +21,8 @@
 
 #define WIDTH 20
 
+using namespace std;
+
 //screen dimensions: 320 x 480
 Adafruit_TFTLCD tft(LCD_CS, LCD_CD, LCD_WR, LCD_RD, LCD_RESET);
 
@@ -105,11 +107,17 @@ class Room {
   }
   Item* getItem(char* findItem) {
     Item* tempItem;
-    for (int a = 0; items[a] != items->end(); a++) {
-      //this is broken, please fix or i will kms
+    int a = 0;
+    try {
+      int a = 0;
+      while (items[a]->getName() == findItem) {
+        tempItem = *items[a];
+        items->remove(a);
+        a++;
+      }
+    } catch (IOException e) {
+      return NULL;
     }
-    return tempItem;
-  }
  private:
   Room* north;
   Room* east;
