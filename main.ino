@@ -9,7 +9,8 @@
 #define LCD_RESET A4
 
 #define BLACK   0x0000
-#define GREY    0xAAAA
+#define GREY    0xBDF7
+#define DARKGREY 0x632C
 #define BLUE    0x001F
 #define RED     0xF800
 #define GREEN   0x07E0
@@ -28,9 +29,9 @@ Adafruit_TFTLCD tft(LCD_CS, LCD_CD, LCD_WR, LCD_RD, LCD_RESET);
 
 class Item {
  public:
-  Item(char* name, int DMG, int val, int width) { //constructor: Item("name", DMG, specialVal, width);
+  Item(char* name, int DMG, int val, uint16_t color, int width) { //constructor: Item("name", DMG, specialVal, width);
     itemName = name; DMG = DMG; specialVal = val;
-    itemX = 0; itemY = 0; itemWidth = width;
+    itemX = 0; itemY = 0; itemColor = color; itemWidth = width;
   }
   ~Item() {
     delete itemName;
@@ -62,13 +63,11 @@ class Item {
   int specialVal;
   int itemX;
   int itemY;
-  //int itemColor;
+  uint16_t itemColor;
   int itemWidth;
 };
 
-Item* Potion = new Item("Potion", 0, 10, 4);
-
-typedef Vector<Item*> ItemVect;
+Item* Potion = new Item("Potion", 0, 10, RED, 4);
 
 class Room {
  public:
@@ -102,28 +101,18 @@ class Room {
   Room* getWest() {
     return west;
   }
-  void addItem(Item* item) {
-    items->push_back(item);
+  void addItem(Item* it) {
+    item = it;
   }
-  Item* getItem(char* findItem) {
-    Item* tempItem;
-    int a = 0;
-    try {
-      int a = 0;
-      while (items[a]->getName() == findItem) {
-        tempItem = *items[a];
-        items->remove(a);
-        a++;
-      }
-    } catch (IOException e) {
-      return NULL;
-    }
+  Item* getItem() {
+    return item;
+  }
  private:
   Room* north;
   Room* east;
   Room* south;
   Room* west;
-  ItemVect* items;
+  Item* item;
 };
 
 //position stats
@@ -139,6 +128,7 @@ int maxMana = 20;
 int atk = 1;
 int def = 1;
 Item* wielding;
+Room* current;
 
 void setup() {
   Serial.begin(9600);
@@ -150,25 +140,63 @@ void setup() {
   pinMode(12, INPUT);
   tft.setRotation(3);
 
-  xPos = 0;
-  yPos = 100;
+  xPos = 60;
+  yPos = 110;
   tft.fillRect(xPos, yPos, WIDTH, WIDTH, WHITE);
   SidebarRender();
 
-  Item* sword = new Item("Sword", 1, 0, 10);
+  Item* sword = new Item("Sword", 1, 0, BLUE, 10);
 
   Room* entrance = new Room();
-  entrance->east = R1;
-  items.push_back(sword);
-
   Room* R1 = new Room();
-  R1->west = entrance;
+  
+  entrance->setEast(R1);
+  entrance->addItem(sword);
+  
+  R1->setWest(entrance);
 
-  RoomRender(entrance);
+  current = entrance;
+  RoomRender(current);
 }
 
 void loop() {
   Movement();
+  ChangeRooms();
+}
+
+void ChangeRooms() {
+  if (xPos >= 220 && yPos <= 10) {//go thru north exit
+    current = current->getNorth();
+    tft.fillRect(0, 0, 480, 240, GREY);
+    RoomRender(current);
+    xPos = 230;
+    yPos = 180;
+    tft.fillRect(xPos, yPos, WIDTH, WIDTH, WHITE);
+  }
+  if (xPos >= 450 && yPos >= 100) {//go thru east exit
+    current = current->getEast();
+    tft.fillRect(0, 0, 480, 240, GREY);
+    RoomRender(current);
+    xPos = 40;
+    yPos = 110;
+    tft.fillRect(xPos, yPos, WIDTH, WIDTH, WHITE);
+  }
+  if (xPos >= 220 && yPos >= 210) {//go thru north exit
+    current = current->getSouth();
+    tft.fillRect(0, 0, 480, 240, GREY);
+    RoomRender(current);
+    xPos = 230;
+    yPos = 40;
+    tft.fillRect(xPos, yPos, WIDTH, WIDTH, WHITE);
+  }
+  if (xPos <= 10 && yPos >= 100) {//go thru west exit
+    current = current->getWest();
+    tft.fillRect(0, 0, 480, 240, GREY);
+    RoomRender(current);
+    xPos = 420;
+    yPos = 110;
+    tft.fillRect(xPos, yPos, WIDTH, WIDTH, WHITE);
+  }
 }
 
 void Movement() {
@@ -176,28 +204,70 @@ void Movement() {
   int yMove = map(analogRead(A4), 50, 300, 1, -1);
   if (xMove !=0 || yMove != 0) {
     if (xMove < 0) { //moving left, replace right
-      tft.fillRect(xPos + WIDTH, yPos - 1, moveSpeed, WIDTH + 2, BLACK);
+      tft.fillRect(xPos + WIDTH, yPos - 1, moveSpeed, WIDTH + 2, GREY);
     } else if (xMove > 0) { //moving right, replace left
-      tft.fillRect(xPos - moveSpeed, yPos - 1, moveSpeed, WIDTH + 2, BLACK);
+      tft.fillRect(xPos - moveSpeed, yPos - 1, moveSpeed, WIDTH + 2, GREY);
     }
     xPos += moveSpeed * xMove;
-    if (xPos <= 0 || xPos >= 460) xPos -= moveSpeed * xMove;
     if (yMove < 0) { //moving down, replace up
-      tft.fillRect(xPos - 1, yPos + WIDTH, WIDTH + 2, moveSpeed, BLACK);
+      tft.fillRect(xPos - 1, yPos + WIDTH, WIDTH + 2, moveSpeed, GREY);
     } else if (yMove > 0) { //moving up, replace down
-      tft.fillRect(xPos - 1, yPos, WIDTH + 2, moveSpeed, BLACK);
+      tft.fillRect(xPos - 1, yPos, WIDTH + 2, moveSpeed, GREY);
     }
     yPos += moveSpeed * yMove;
-    if (yPos <= 0 || yPos >= 220) yPos -= moveSpeed * yMove;
+    //no walking into walls
+    if ((xPos <= 220 && yPos <= 40) || //upper left hori
+        (xPos <= 40 && yPos <= 100) || //upper left verti
+        (xPos >= 240 && yPos <= 40) || //upper right hori
+        (xPos >= 420 && yPos <= 100) || //upper right verti
+        (xPos <= 220 && yPos >= 180) || //bottom left hori
+        (xPos <= 40 && yPos >= 120) || //bottom left verti 
+        (xPos >= 240 && yPos >= 180) || //bottom right hori
+        (xPos >= 420 && yPos >= 120)) { //bottom right verti
+      xPos -= moveSpeed * xMove;
+      yPos -= moveSpeed * yMove;
+    }
+    //if no entrance, no walking into wall
+    if (current->getNorth() == NULL && yPos <= 40) {
+      yPos -= moveSpeed * yMove;
+    }
+    if (current->getEast() == NULL && xPos >= 420) {
+      xPos -= moveSpeed * xMove;
+    }
+    if (current->getSouth() == NULL && yPos >= 180) {
+      yPos -= moveSpeed * yMove;
+    }
+    if (current->getWest() == NULL && xPos <= 40) {
+      xPos -= moveSpeed * xMove;
+    }
     tft.fillRect(xPos, yPos, WIDTH, WIDTH, WHITE);
   }
 }
 
 void RoomRender(Room* room) {
-  if (room->north == NULL) {
-    tft.fillRect(0, 0, 480, 40, PURPLE);
+  if (room->getNorth() == NULL) { //north wall
+    tft.fillRect(0, 0, 480, 40, DARKGREY);
   } else {
-
+    tft.fillRect(0, 0, 220, 40, DARKGREY);
+    tft.fillRect(260, 0, 220, 40, DARKGREY);
+  }
+  if (room->getEast() == NULL) { //east wall
+    tft.fillRect(440, 0, 40, 240, DARKGREY);
+  } else {
+    tft.fillRect(440, 0, 40, 100, DARKGREY);
+    tft.fillRect(440, 140, 40, 100, DARKGREY);
+  }
+  if (room->getSouth() == NULL) { //south wall
+    tft.fillRect(0, 200, 480, 40, DARKGREY);
+  } else {
+    tft.fillRect(0, 200, 220, 40, DARKGREY);
+    tft.fillRect(260, 200, 220, 40, DARKGREY);
+  }
+  if (room->getWest() == NULL) { //west wall
+    tft.fillRect(0, 0, 40, 240, DARKGREY);
+  } else {
+    tft.fillRect(0, 0, 40, 100, DARKGREY);
+    tft.fillRect(0, 140, 40, 100, DARKGREY);
   }
 }
 
@@ -242,7 +312,7 @@ void SidebarRender() {
   tft.setTextSize(1);
   tft.setCursor(135, 300);
   if (wielding != NULL) {
-    tft.println(wielding->itemName);
+    tft.println(wielding->getName());
   } else {
     tft.println("NONE");
   }  
