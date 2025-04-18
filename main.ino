@@ -19,6 +19,7 @@
 #define PURPLE  0xF810
 #define YELLOW  0xFFE0
 #define WHITE   0xFFFF
+#define BROWN   0x8A22
 
 #define WIDTH 20
 
@@ -27,11 +28,12 @@ using namespace std;
 //screen dimensions: 320 x 480
 Adafruit_TFTLCD tft(LCD_CS, LCD_CD, LCD_WR, LCD_RD, LCD_RESET);
 
+enum ItemType{WEAPON, CONSUMABLE, SCROLL};
+
 class Item {
  public:
-  Item(char* name, int DMG, int val, uint16_t color, int width) { //constructor: Item("name", DMG, specialVal, width);
-    itemName = name; DMG = DMG; specialVal = val;
-    itemX = 0; itemY = 0; itemColor = color; itemWidth = width;
+  Item(char* name, int newDMG, int val, ItemType type) { //constructor: Item("name", DMG, specialVal, type);
+    itemName = name; DMG = newDMG; specialVal = val; itemType = type;
   }
   ~Item() {
     delete itemName;
@@ -45,29 +47,17 @@ class Item {
   int getSpecial() {
     return specialVal;
   }
-  void setX(int x) {
-    itemX = x;
-  }
-  void setY(int y) {
-    itemY = y;
-  }
-  int getX() {
-    return itemX;
-  }
-  int getY() {
-    return itemY;
+  ItemType getType() {
+    return itemType;
   }
  private:
   char* itemName = new char[30];
   int DMG; //for weapons
   int specialVal;
-  int itemX;
-  int itemY;
-  uint16_t itemColor;
-  int itemWidth;
+  ItemType itemType;
 };
 
-Item* Potion = new Item("Potion", 0, 10, RED, 4);
+Item* Potion = new Item("Potion", 0, 10, CONSUMABLE);
 
 class Room {
  public:
@@ -76,6 +66,7 @@ class Room {
     east = NULL;
     south = NULL;
     west = NULL;
+    item = NULL;
   }
   void setNorth(Room* n) {
     north = n;
@@ -103,9 +94,13 @@ class Room {
   }
   void addItem(Item* it) {
     item = it;
+    chest = true;
   }
   Item* getItem() {
     return item;
+  }
+  bool isChest() {
+    return chest;
   }
  private:
   Room* north;
@@ -113,6 +108,7 @@ class Room {
   Room* south;
   Room* west;
   Item* item;
+  bool chest = false;
 };
 
 //position stats
@@ -128,7 +124,12 @@ int maxMana = 20;
 int atk = 1;
 int def = 1;
 Item* wielding;
+Item* scroll1;
+Item* scroll2;
+
 Room* current;
+bool textDisplayed;
+bool touchingChest;
 
 void setup() {
   Serial.begin(9600);
@@ -139,29 +140,100 @@ void setup() {
   pinMode(A5, INPUT);
   pinMode(12, INPUT);
   tft.setRotation(3);
+  Serial.begin(9600);
 
   xPos = 60;
   yPos = 110;
   tft.fillRect(xPos, yPos, WIDTH, WIDTH, WHITE);
-  SidebarRender();
+  textDisplayed = false;
+  touchingChest = false;
 
-  Item* sword = new Item("Sword", 1, 0, BLUE, 10);
+  Item* dagger = new Item("Dagger", 1, 0, WEAPON);
+  Item* sword = new Item("Sword", 2, 0, WEAPON);
+
+  Item* infScroll = new Item("Infernal Scroll", 8, 10, SCROLL);
+
+  wielding = dagger;
 
   Room* entrance = new Room();
   Room* R1 = new Room();
+  Room* R2 = new Room();
   
   entrance->setEast(R1);
   entrance->addItem(sword);
   
   R1->setWest(entrance);
+  R1->setNorth(R2);
+  
+  R2->setSouth(R1);
+  R2->addItem(infScroll);
 
   current = entrance;
   RoomRender(current);
+  SidebarRender();
 }
 
 void loop() {
   Movement();
   ChangeRooms();
+  OpenChest();
+}
+
+bool buttonDown;
+bool chestOpened = false;
+
+void OpenChest() {
+  if ((xPos >= 318 && xPos <= 392 && yPos <= 72) && (current->isChest())) {
+    if (digitalRead(12) == HIGH && buttonDown == false) {
+      if (chestOpened) {
+        if (current->getItem()->getType() == WEAPON) {
+          Item* temp = current->getItem();
+          current->addItem(wielding);
+          wielding = temp;
+          SidebarRender();
+          tft.setTextSize(1);
+          tft.setTextColor(WHITE);
+          tft.setCursor(210, 250);
+          tft.print("Equipped: ");
+          tft.print(wielding->getName());
+        } else if (current->getItem()->getType() == SCROLL) {
+          tft.print("Select a scroll slot");
+          //open scroll learn/unlearn menu
+        } else {
+          tft.print("Obtained: ");
+          tft.print(current->getItem()->getName());
+          //add to inventory...IMPLEMENT LINKED LIST
+        }
+      } else {
+        tft.fillRect(200, 240, 280, 80, BLACK);
+        tft.setCursor(210, 250);
+        tft.setTextSize(1);
+        tft.setTextColor(WHITE);
+        if (current->getItem() == NULL) {
+          tft.print("Chest is empty");
+        } else {
+          tft.print("Chest contains: ");
+          tft.print(current->getItem()->getName());
+          tft.setCursor(210, 260);
+          tft.print("DMG: ");
+          tft.print(current->getItem()->getDMG());
+          tft.setCursor(210, 270);
+          if (current->getItem()->getType() == WEAPON) {
+            tft.print("Press button to pick up \(this will drop any ");
+            tft.setCursor(210, 280);
+            tft.print("current weapons\)");
+          } else {
+            tft.print("Press button to pick up");
+          }
+        }
+        buttonDown = true;
+        chestOpened = true;
+      }
+    }
+  }
+  if (digitalRead(12) == LOW) {
+    buttonDown = false;
+  }
 }
 
 void ChangeRooms() {
@@ -227,6 +299,24 @@ void Movement() {
       xPos -= moveSpeed * xMove;
       yPos -= moveSpeed * yMove;
     }
+    //no walking into chest
+    if (current->isChest()) {
+      if (xPos >= 320 && xPos <= 390 && yPos <= 70) {
+        xPos -= moveSpeed * xMove;
+        yPos -= moveSpeed * yMove;
+        touchingChest = true;
+        textDisplayed = true;
+        tft.setCursor(210, 250);
+        tft.setTextSize(1);
+        tft.setTextColor(WHITE);
+        tft.println("Press button to open chest");
+      } else if (textDisplayed == true) {
+        tft.fillRect(200, 240, 280, 80, BLACK);
+        textDisplayed = false;
+        touchingChest = false;
+        chestOpened = false;
+      }
+    }
     //if no entrance, no walking into wall
     if (current->getNorth() == NULL && yPos <= 40) {
       yPos -= moveSpeed * yMove;
@@ -268,6 +358,10 @@ void RoomRender(Room* room) {
   } else {
     tft.fillRect(0, 0, 40, 100, DARKGREY);
     tft.fillRect(0, 140, 40, 100, DARKGREY);
+  }
+  if (room->getItem() != NULL) { //GENERATE A CHEST AT 340, 40
+    tft.fillRect(340, 40, 50, 30, BROWN);
+    tft.fillRect(361, 65, 8, 5, YELLOW);
   }
 }
 
