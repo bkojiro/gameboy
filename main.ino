@@ -117,12 +117,12 @@ int yPos;
 int moveSpeed = 1;
 
 //player stats
-int health = 20;
-int maxHealth = 20;
+int health = 40;
+int maxHealth = 40;
 int mana = 20;
 int maxMana = 20;
-int atk = 1;
-int def = 1;
+int atk = 10;
+int def = 10;
 Item* wielding;
 Item* scroll1;
 Item* scroll2;
