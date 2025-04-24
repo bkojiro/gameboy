@@ -161,6 +161,7 @@ void setup() {
   
   entrance->setEast(R1);
   entrance->addItem(sword);
+  tft.fillRect(200, 150, 20, 20, RED);
   
   R1->setWest(entrance);
   R1->setNorth(R2);
@@ -177,6 +178,18 @@ void loop() {
   Movement();
   ChangeRooms();
   OpenChest();
+  Encounter();
+}
+
+void Encounter() {
+  int eLeft = 200;
+  int eRight = 200 + 20;
+  int eBottom = 150;
+  int eTop = 150 - 20;
+
+  if ((xPos + WIDTH > eLeft && xPos < eRight) && (yPos > eTop && yPos - WIDTH < eBottom)) {
+    Serial.println("encounter");
+  }
 }
 
 bool buttonDown;
