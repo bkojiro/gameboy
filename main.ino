@@ -32,8 +32,8 @@ enum ItemType{WEAPON, CONSUMABLE, SCROLL};
 
 class Item {
  public:
-  Item(char* name, int newDMG, int val, ItemType type) { //constructor: Item("name", DMG, specialVal, type);
-    itemName = name; DMG = newDMG; specialVal = val; itemType = type;
+  Item(char* name, int newDMG, int ncrit, int val, ItemType type) { //constructor: Item("name", DMG, crit%, specialVal, type);
+    itemName = name; DMG = newDMG; crit = ncrit; specialVal = val; itemType = type;
   }
   ~Item() {
     delete itemName;
@@ -44,6 +44,9 @@ class Item {
   int getDMG() {
     return DMG;
   }
+  int getCrit() {
+    return crit;
+  }
   int getSpecial() {
     return specialVal;
   }
@@ -53,11 +56,102 @@ class Item {
  private:
   char* itemName = new char[30];
   int DMG; //for weapons
+  int crit;
   int specialVal;
   ItemType itemType;
 };
 
-Item* Potion = new Item("Potion", 0, 10, CONSUMABLE);
+Item* Potion = new Item("Life Potion", 0, 0, 10, CONSUMABLE);
+Item* MPotion = new Item("Mana Potion", 0, 0, 10, CONSUMABLE);
+
+enum EnemyType{GOBLIN, SKELE, TROLL, MINOTAUR, LICH};
+
+class Enemy {
+  public:
+   Enemy(EnemyType type) {
+    Type = type;
+    x = random(140, 280);
+    y = random(80, 140);
+    if (type == GOBLIN) {
+      name = "GOBLIN";
+      width = 20;
+      HP = random(9, 13); //9-12
+      ATK = random(9, 12); //9-11
+      DEF = random (14, 16); //14-15
+    } else if (type == SKELE) {
+      name = "SKELETON";
+      width = 20;
+      HP = random(7, 11); //7-10
+      ATK = random(16, 19); //16-18
+      DEF = random (9, 12); //9-11
+    } else if (type == TROLL) {
+      name = "TROLL";
+      width = 40;
+      HP = random(16, 20); //16-19
+      ATK = random(14, 17); //14-16
+      DEF = random (15, 19); //15-18
+    } else if (type == MINOTAUR) {
+      name = "MINOTAUR";
+      width = 50;
+      HP = 26;
+      ATK = 18;
+      DEF = 16;
+    } else if (type == LICH) {
+      name = "LICH";
+      width = 80;
+      x = 200;
+      y = 120;
+      HP = 20;
+      ATK = 20;
+      DEF = 20;
+    }
+   }
+   ~Enemy() {
+    delete name;
+   }
+   char* getName() {
+    return name;
+   }
+   void setHP(int newhp) {
+    HP = newhp;
+   }
+   int getHP() {
+    return HP;
+   }
+   void setATK(int newatk) {
+    ATK = newatk;
+   }
+   int getATK() {
+    return ATK;
+   }
+   void setDEF(int newdef) {
+    DEF = newdef;
+   }
+   int getDEF() {
+    return DEF;
+   }
+   EnemyType getType() {
+    return Type;
+   }
+   int getX() {
+    return x;
+   }
+   int getY() {
+    return y;
+   }
+   int getWidth() {
+    return width;
+   }
+  private:
+   char* name = new char[20];
+   EnemyType Type;
+   int HP;
+   int ATK;
+   int DEF;
+   int x;
+   int y;
+   int width;
+};
 
 class Room {
  public:
@@ -102,6 +196,12 @@ class Room {
   bool isChest() {
     return chest;
   }
+  Enemy* getEnemy() {
+    return enemy;
+  }
+  void setEnemy(Enemy* e) {
+    enemy = e;
+  }
  private:
   Room* north;
   Room* east;
@@ -109,6 +209,7 @@ class Room {
   Room* west;
   Item* item;
   bool chest = false;
+  Enemy* enemy;
 };
 
 //position stats
@@ -117,8 +218,8 @@ int yPos;
 int moveSpeed = 1;
 
 //player stats
-int health = 40;
-int maxHealth = 40;
+int health = 20;
+int maxHealth = 20;
 int mana = 20;
 int maxMana = 20;
 int atk = 10;
@@ -130,9 +231,9 @@ Item* scroll2;
 Room* current;
 bool textDisplayed;
 bool touchingChest;
+bool battlePhase;
 
 void setup() {
-  Serial.begin(9600);
   uint16_t identifier = tft.readID();
   tft.begin(identifier);
   tft.fillScreen(GREY);
@@ -141,17 +242,19 @@ void setup() {
   pinMode(12, INPUT);
   tft.setRotation(3);
   Serial.begin(9600);
+  randomSeed(analogRead(A5));
 
   xPos = 60;
   yPos = 110;
   tft.fillRect(xPos, yPos, WIDTH, WIDTH, WHITE);
   textDisplayed = false;
   touchingChest = false;
+  battlePhase = false;
 
-  Item* dagger = new Item("Dagger", 1, 0, WEAPON);
-  Item* sword = new Item("Sword", 2, 0, WEAPON);
+  Item* dagger = new Item("Dagger", 1, 10, 0, WEAPON);
+  Item* sword = new Item("Sword", 4, 20, 0, WEAPON);
 
-  Item* infScroll = new Item("Infernal Scroll", 8, 10, SCROLL);
+  Item* infScroll = new Item("Infernal Scroll", 8, 0, 10, SCROLL);
 
   wielding = dagger;
 
@@ -159,13 +262,15 @@ void setup() {
   Room* R1 = new Room();
   Room* R2 = new Room();
   
+  //entrance
   entrance->setEast(R1);
   entrance->addItem(sword);
-  tft.fillRect(200, 150, 20, 20, RED);
-  
+  Enemy* e1 = new Enemy(GOBLIN);
+  entrance->setEnemy(e1);
+  //r1
   R1->setWest(entrance);
   R1->setNorth(R2);
-  
+  //r2
   R2->setSouth(R1);
   R2->addItem(infScroll);
 
@@ -174,22 +279,86 @@ void setup() {
   SidebarRender();
 }
 
+bool inCombat = false;
+
 void loop() {
-  Movement();
-  ChangeRooms();
-  OpenChest();
-  Encounter();
+  if (!battlePhase) {
+    Movement();
+    ChangeRooms();
+    OpenChest();
+    battlePhase = Encounter(current->getEnemy());
+  } else {
+    inCombat = true;
+    Battle(current->getEnemy());
+  }
 }
 
-void Encounter() {
-  int eLeft = 200;
-  int eRight = 200 + 20;
-  int eBottom = 150;
-  int eTop = 150 - 20;
+void Battle(Enemy* e) {
+  tft.fillRect(0, 0, 480, 240, GREY); //bg
+  tft.fillRect(0, 160, 480, 80, DARKGREY); //ground
+  tft.fillRect(100, 120, WIDTH * 2, WIDTH * 2, WHITE); //player
+  tft.fillRect(380 - (e->getWidth() * 2), 160 - (e->getWidth() * 2), e->getWidth() * 2, e->getWidth() * 2, RED); //enemy
+  //player/enemy text
+  tft.setCursor(60, 20);
+  tft.setTextSize(2);
+  tft.setTextColor(WHITE);
+  tft.println("PLAYER");
+  tft.setCursor(340, 20);
+  tft.setTextColor(RED);
+  tft.println(e->getName());
+  tft.setCursor(340, 40);
+  tft.setTextColor(BLACK);
+  tft.print("HP: ");
+  tft.print(e->getHP());
+  //option text
+  tft.setTextColor(WHITE);
+  tft.setCursor(60, 190);
+  tft.print("SMITE");
+  tft.setCursor(210, 190);
+  tft.print("MAGIC");
+  tft.setCursor(360, 190);
+  tft.print("ITEM");
+  tft.fillRect(40, 192, 10, 10, WHITE);
+  while (inCombat) {
+    int SMITE = 1; int MAGIC = 2; int ITEM = 3;
+    int option = SMITE;
+    
+    int PLAYER = 0;
+    int ENEMY = 1;
+    int turn;
+    while (turn == PLAYER) {
+      int xMove = map(analogRead(A5), 50, 300, 1, -1);
+      if (xMove == 1) {
+        if (option != ITEM) {
+          tft.fillRect(40 + (150 * (option - 1)), 192, 10, 10, DARKGREY);
+          tft.fillRect(40 + (150 * option), 192, 10, 10, WHITE);
+          option++;
+        }
+      } else if (xMove == -1) {
+        if (option != SMITE) {
+          tft.fillRect(40 + (150 * (option - 1)), 192, 10, 10, DARKGREY);
+          tft.fillRect(40 + (150 * (option - 2)), 192, 10, 10, WHITE);
+          option--;
+        }
+      }
+      delay(200);
+    }
 
-  if ((xPos + WIDTH > eLeft && xPos < eRight) && (yPos > eTop && yPos - WIDTH < eBottom)) {
-    Serial.println("encounter");
+    //inCombat = false; //finish combat   
   }
+}
+
+bool Encounter(Enemy* e) {
+  //replace these with enemy position and size variables
+  int eLeft = e->getX();
+  int eRight = e->getX() + e->getWidth();
+  int eBottom = e->getY();
+  int eTop = e->getY() - e->getWidth();
+  if ((xPos + WIDTH > eLeft && xPos < eRight) && (yPos > eTop && yPos - WIDTH < eBottom)) {
+    //enter battle phase
+    return true;
+  }
+  return false;
 }
 
 bool buttonDown;
@@ -372,9 +541,13 @@ void RoomRender(Room* room) {
     tft.fillRect(0, 0, 40, 100, DARKGREY);
     tft.fillRect(0, 140, 40, 100, DARKGREY);
   }
-  if (room->getItem() != NULL) { //GENERATE A CHEST AT 340, 40
+  if (room->isChest() != NULL) { //GENERATE A CHEST AT 340, 40
     tft.fillRect(340, 40, 50, 30, BROWN);
     tft.fillRect(361, 65, 8, 5, YELLOW);
+  }
+  if (room->getEnemy() != NULL) {
+    Enemy* e = room->getEnemy();
+    tft.fillRect(e->getX(), e->getY(), e->getWidth(), e->getWidth(), RED);
   }
 }
 
