@@ -1,6 +1,5 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_TFTLCD.h>
-#include <Vector.h>
 
 #define LCD_CS A3
 #define LCD_CD A2
@@ -224,6 +223,7 @@ int mana = 20;
 int maxMana = 20;
 int atk = 10;
 int def = 10;
+int crit = 10;
 Item* wielding;
 Item* scroll1;
 Item* scroll2;
@@ -322,9 +322,7 @@ void Battle(Enemy* e) {
   while (inCombat) {
     int SMITE = 1; int MAGIC = 2; int ITEM = 3;
     int option = SMITE;
-    
-    int PLAYER = 0;
-    int ENEMY = 1;
+    int PLAYER = 0; int ENEMY = 1;
     int turn;
     while (turn == PLAYER) {
       int xMove = map(analogRead(A5), 50, 300, 1, -1);
@@ -341,7 +339,39 @@ void Battle(Enemy* e) {
           option--;
         }
       }
-      delay(200);
+      if (digitalRead(12) == HIGH) {
+        if (option == SMITE) {
+          for (int i = 0; i < 50; i++) {
+            tft.fillRect(100 + (i * 3), 120, WIDTH * 2, WIDTH * 2, WHITE);
+            tft.fillRect(100 + ((i - 1) * 3), 120, 3, WIDTH * 2, GREY);
+            delay(5);
+          }
+          //calculate new health
+          int DMG = round(wielding->getDMG() * atk * (1/((float)e->getDEF())));
+          int CRIT = random(1, 100);
+          int critChance = crit + wielding->getCrit();
+          if (CRIT < critChance) DMG = DMG * 2;
+          e->setHP(e->getHP() - DMG);
+          if (e->getHP() < 0) e->setHP(0);
+          Serial.println(DMG);
+          //display new health
+          tft.fillRect(340, 40, 80, 20, GREY);
+          tft.setCursor(340, 40);
+          tft.setTextColor(BLACK);
+          tft.print("HP: ");
+          tft.print(e->getHP());
+          for (int i = 0; i < 50; i++) {
+            tft.fillRect(250 - (i * 3), 120, WIDTH * 2, WIDTH * 2, WHITE);
+            tft.fillRect(250 + WIDTH * 2 - ((i - 1) * 3), 120, 3, WIDTH * 2, GREY);
+            delay(5);
+          }
+        } else if (option == MAGIC) {
+
+        } else if (option == ITEM) {
+
+        }
+      }
+      delay(100);
     }
 
     //inCombat = false; //finish combat   
