@@ -211,6 +211,8 @@ class Room {
   Enemy* enemy;
 };
 
+int DMG_MULTI = 1; //increase this as game progresses
+
 //position stats
 int xPos;
 int yPos;
@@ -319,11 +321,13 @@ void Battle(Enemy* e) {
   tft.setCursor(360, 190);
   tft.print("ITEM");
   tft.fillRect(40, 192, 10, 10, WHITE);
-  while (inCombat) {
-    int SMITE = 1; int MAGIC = 2; int ITEM = 3;
-    int option = SMITE;
-    int PLAYER = 0; int ENEMY = 1;
-    int turn;
+  
+  int SMITE = 1; int MAGIC = 2; int ITEM = 3;
+  int option = SMITE;
+  int PLAYER = 0; int ENEMY = 1;
+  int turn = PLAYER;
+  while (inCombat) {     
+    //player turn
     while (turn == PLAYER) {
       int xMove = map(analogRead(A5), 50, 300, 1, -1);
       if (xMove == 1) {
@@ -370,11 +374,24 @@ void Battle(Enemy* e) {
         } else if (option == ITEM) {
 
         }
+        turn = ENEMY;
       }
       delay(100);
     }
-
-    //inCombat = false; //finish combat   
+    if (e->getHP() == 0) { //win battle!
+      inCombat = false;
+    }
+    //enemy turn
+    int DMG = 2 * e->getATK() * DMG_MULTI * (1/(float)def);
+    for (int i = 0; i < 50; i++) {
+      tft.fillRect(380 - (i * 3), 120, e->getWidth() * 2, e->getWidth() * 2, RED);
+      tft.fillRect(380 - ((i - 1) * 3), 120, 3, e->getWidth() * 2, GREY);
+      delay(5);
+    }
+    turn = PLAYER;
+    if (health == 0) { //lose battle
+      inCombat = false;
+    }
   }
 }
 
