@@ -384,8 +384,13 @@ void Battle(Enemy* e) {
     //enemy turn
     int DMG = 2 * e->getATK() * DMG_MULTI * (1/(float)def);
     for (int i = 0; i < 50; i++) {
-      tft.fillRect(380 - (i * 3), 120, e->getWidth() * 2, e->getWidth() * 2, RED);
+      tft.fillRect(380 - e->getWidth() * 2 - (i * 3), 120, e->getWidth() * 2, e->getWidth() * 2, RED);
       tft.fillRect(380 - ((i - 1) * 3), 120, 3, e->getWidth() * 2, GREY);
+      delay(5);
+    }
+    for (int i = 0; i < 50; i++) {
+      tft.fillRect(230 - e->getWidth() * 2 + (i * 3), 120, e->getWidth() * 2, e->getWidth() * 2, RED);
+      tft.fillRect(230 - e->getWidth() * 2 + ((i - 1) * 3), 120, 3, e->getWidth() * 2, GREY);
       delay(5);
     }
     turn = PLAYER;
@@ -396,14 +401,16 @@ void Battle(Enemy* e) {
 }
 
 bool Encounter(Enemy* e) {
-  //replace these with enemy position and size variables
-  int eLeft = e->getX();
-  int eRight = e->getX() + e->getWidth();
-  int eBottom = e->getY();
-  int eTop = e->getY() - e->getWidth();
-  if ((xPos + WIDTH > eLeft && xPos < eRight) && (yPos > eTop && yPos - WIDTH < eBottom)) {
-    //enter battle phase
-    return true;
+  if (e != NULL) {
+    int eLeft = e->getX();
+    int eRight = e->getX() + e->getWidth();
+    int eBottom = e->getY();
+    int eTop = e->getY() - e->getWidth();
+    if ((xPos + WIDTH > eLeft && xPos < eRight) && (yPos > eTop && yPos - WIDTH < eBottom)) {
+      //enter battle phase
+      return true;
+    }
+    return false;
   }
   return false;
 }
@@ -415,19 +422,38 @@ void OpenChest() {
   if ((xPos >= 318 && xPos <= 392 && yPos <= 72) && (current->isChest())) {
     if (digitalRead(12) == HIGH && buttonDown == false) {
       if (chestOpened) {
+        tft.setTextSize(1);
+        tft.setTextColor(WHITE);
+        tft.setCursor(210, 250);
         if (current->getItem()->getType() == WEAPON) {
           Item* temp = current->getItem();
           current->addItem(wielding);
           wielding = temp;
           SidebarRender();
-          tft.setTextSize(1);
-          tft.setTextColor(WHITE);
-          tft.setCursor(210, 250);
           tft.print("Equipped: ");
           tft.print(wielding->getName());
         } else if (current->getItem()->getType() == SCROLL) {
+          tft.fillRect(200, 240, 280, 80, BLACK);
           tft.print("Select a scroll slot");
+          tft.setCursor(215, 260);
+          if (scroll1 != NULL) {
+            tft.print(scroll1->getName());
+          } else {
+            tft.print("EMPTY");
+          }
+          tft.setCursor(215, 270);
+          if (scroll2 != NULL) {
+            tft.print(scroll2->getName());
+          } else {
+            tft.print("EMPTY");
+          }
+          tft.drawRect(210, 261, 4, 4, GREEN);
           //open scroll learn/unlearn menu
+          bool scrolling = true;
+          while (scrolling) {
+            delay(200);
+            
+          }
         } else {
           tft.print("Obtained: ");
           tft.print(current->getItem()->getName());
