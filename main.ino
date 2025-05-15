@@ -267,7 +267,7 @@ void setup() {
   //entrance
   entrance->setEast(R1);
   entrance->addItem(sword);
-  Enemy* e1 = new Enemy(GOBLIN);
+  Enemy* e1 = new Enemy(TROLL);
   entrance->setEnemy(e1);
   //r1
   R1->setWest(entrance);
@@ -384,13 +384,13 @@ void Battle(Enemy* e) {
     //enemy turn
     int DMG = 2 * e->getATK() * DMG_MULTI * (1/(float)def);
     for (int i = 0; i < 50; i++) {
-      tft.fillRect(380 - e->getWidth() * 2 - (i * 3), 120, e->getWidth() * 2, e->getWidth() * 2, RED);
-      tft.fillRect(380 - ((i - 1) * 3), 120, 3, e->getWidth() * 2, GREY);
+      tft.fillRect(380 - e->getWidth() * 2 - (i * 3), 160 - (e->getWidth() * 2), e->getWidth() * 2, e->getWidth() * 2, RED);
+      tft.fillRect(380 - ((i - 1) * 3), 160 - (e->getWidth() * 2), 3, e->getWidth() * 2, GREY);
       delay(5);
     }
     for (int i = 0; i < 50; i++) {
-      tft.fillRect(230 - e->getWidth() * 2 + (i * 3), 120, e->getWidth() * 2, e->getWidth() * 2, RED);
-      tft.fillRect(230 - e->getWidth() * 2 + ((i - 1) * 3), 120, 3, e->getWidth() * 2, GREY);
+      tft.fillRect(230 - e->getWidth() * 2 + (i * 3), 160 - (e->getWidth() * 2), e->getWidth() * 2, e->getWidth() * 2, RED);
+      tft.fillRect(230 - e->getWidth() * 2 + ((i - 1) * 3), 160 - (e->getWidth() * 2), 3, e->getWidth() * 2, GREY);
       delay(5);
     }
     turn = PLAYER;
@@ -404,9 +404,9 @@ bool Encounter(Enemy* e) {
   if (e != NULL) {
     int eLeft = e->getX();
     int eRight = e->getX() + e->getWidth();
-    int eBottom = e->getY();
-    int eTop = e->getY() - e->getWidth();
-    if ((xPos + WIDTH > eLeft && xPos < eRight) && (yPos > eTop && yPos - WIDTH < eBottom)) {
+    int eBottom = e->getY()+ e->getWidth();
+    int eTop = e->getY();
+    if ((xPos + WIDTH > eLeft && xPos < eRight) && (yPos + WIDTH > eTop && yPos < eBottom)) {
       //enter battle phase
       return true;
     }
@@ -430,6 +430,9 @@ void OpenChest() {
           current->addItem(wielding);
           wielding = temp;
           SidebarRender();
+          tft.setTextSize(1);
+          tft.setTextColor(WHITE);
+          tft.setCursor(210, 250);
           tft.print("Equipped: ");
           tft.print(wielding->getName());
         } else if (current->getItem()->getType() == SCROLL) {
@@ -450,9 +453,35 @@ void OpenChest() {
           tft.drawRect(210, 261, 4, 4, GREEN);
           //open scroll learn/unlearn menu
           bool scrolling = true;
+          int option = 0;
           while (scrolling) {
-            delay(200);
-            
+            delay(200);  
+            int yMove = map(analogRead(A4), 50, 300, 1, -1);
+            if (yMove == 1) {
+              if (option != 1) {
+                tft.drawRect(210, 261, 4, 4, BLACK);
+                tft.drawRect(210, 271, 4, 4, GREEN);
+                option++;
+              }
+            } else if (yMove == -1) {
+              if (option != 0) {
+                tft.drawRect(210, 271, 4, 4, BLACK);
+                tft.drawRect(210, 261, 4, 4, GREEN);
+                option--;
+              }
+            }
+            if (digitalRead(12) == HIGH) {
+              if (option == 0) { //scroll spot 1
+                scroll1 = current->getItem();
+              }
+              SidebarRender();
+              tft.setTextSize(1);
+              tft.setTextColor(WHITE);
+              tft.setCursor(210, 250);
+              tft.print("Equipped: ");
+              tft.print(wielding->getName());
+              scrolling = false;
+            }
           }
         } else {
           tft.print("Obtained: ");
