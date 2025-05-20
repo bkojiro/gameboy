@@ -189,6 +189,9 @@ class Room {
     item = it;
     chest = true;
   }
+  void removeItem() {
+    item = NULL;
+  }
   Item* getItem() {
     return item;
   }
@@ -239,12 +242,12 @@ void setup() {
   uint16_t identifier = tft.readID();
   tft.begin(identifier);
   tft.fillScreen(GREY);
-  pinMode(A4, INPUT);
   pinMode(A5, INPUT);
+  pinMode(A6, INPUT);
   pinMode(12, INPUT);
   tft.setRotation(3);
   Serial.begin(9600);
-  randomSeed(analogRead(A5));
+  randomSeed(analogRead(A7));
 
   xPos = 60;
   yPos = 110;
@@ -329,7 +332,7 @@ void Battle(Enemy* e) {
   while (inCombat) {     
     //player turn
     while (turn == PLAYER) {
-      int xMove = map(analogRead(A5), 50, 300, 1, -1);
+      int xMove = map(analogRead(A6), 50, 300, 1, -1);
       if (xMove == 1) {
         if (option != ITEM) {
           tft.fillRect(40 + (150 * (option - 1)), 192, 10, 10, DARKGREY);
@@ -436,6 +439,7 @@ void OpenChest() {
           tft.print("Equipped: ");
           tft.print(wielding->getName());
         } else if (current->getItem()->getType() == SCROLL) {
+          Serial.print("hello");
           tft.fillRect(200, 240, 280, 80, BLACK);
           tft.print("Select a scroll slot");
           tft.setCursor(215, 260);
@@ -450,37 +454,47 @@ void OpenChest() {
           } else {
             tft.print("EMPTY");
           }
+          tft.setCursor(215, 280);
+          tft.print("BACK");
           tft.drawRect(210, 261, 4, 4, GREEN);
           //open scroll learn/unlearn menu
           bool scrolling = true;
           int option = 0;
           while (scrolling) {
             delay(200);  
-            int yMove = map(analogRead(A4), 50, 300, 1, -1);
+            int yMove = map(analogRead(A5), 50, 300, 1, -1);
             if (yMove == 1) {
-              if (option != 1) {
-                tft.drawRect(210, 261, 4, 4, BLACK);
-                tft.drawRect(210, 271, 4, 4, GREEN);
+              if (option != 2) {
+                tft.drawRect(210, 261 + 10 * option, 4, 4, BLACK);
+                tft.drawRect(210, 271 + 10 * option, 4, 4, GREEN);
                 option++;
               }
             } else if (yMove == -1) {
               if (option != 0) {
-                tft.drawRect(210, 271, 4, 4, BLACK);
-                tft.drawRect(210, 261, 4, 4, GREEN);
+                tft.drawRect(210, 281 + 10 * (option - 2), 4, 4, BLACK);
+                tft.drawRect(210, 271 + 10 * (option - 2), 4, 4, GREEN);
                 option--;
               }
             }
             if (digitalRead(12) == HIGH) {
-              if (option == 0) { //scroll spot 1
-                scroll1 = current->getItem();
+              Item* temp = current->getItem();
+              if (option != 2) {
+                if (option == 0) { //scroll spot 1
+                  current->addItem(scroll1);
+                  scroll1 = temp;
+                } else if (option == 1) { //scroll spot 2
+                  current->addItem(scroll2);
+                  scroll2 = temp;
+                }
+                SidebarRender();
+                tft.setTextSize(1);
+                tft.setTextColor(WHITE);
+                tft.setCursor(210, 250);
+                tft.print("Equipped: ");
+                tft.print(temp->getName());  
               }
-              SidebarRender();
-              tft.setTextSize(1);
-              tft.setTextColor(WHITE);
-              tft.setCursor(210, 250);
-              tft.print("Equipped: ");
-              tft.print(wielding->getName());
               scrolling = false;
+              buttonDown = true;
             }
           }
         } else {
@@ -509,9 +523,9 @@ void OpenChest() {
           } else {
             tft.print("Press button to pick up");
           }
+          buttonDown = true;
+          chestOpened = true;
         }
-        buttonDown = true;
-        chestOpened = true;
       }
     }
   }
@@ -556,8 +570,8 @@ void ChangeRooms() {
 }
 
 void Movement() {
-  int xMove = map(analogRead(A5), 50, 300, 1, -1);
-  int yMove = map(analogRead(A4), 50, 300, 1, -1);
+  int xMove = map(analogRead(A6), 50, 300, 1, -1);
+  int yMove = map(analogRead(A5), 50, 300, 1, -1);
   if (xMove !=0 || yMove != 0) {
     if (xMove < 0) { //moving left, replace right
       tft.fillRect(xPos + WIDTH, yPos - 1, moveSpeed, WIDTH + 2, GREY);
