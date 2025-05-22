@@ -376,11 +376,11 @@ void Battle(Enemy* e) {
           if (CRIT < critChance) DMG = DMG * 2;
           e->setHP(e->getHP() - DMG);
           if (e->getHP() < 0) e->setHP(0);
-          Serial.println(DMG);
           //display new health
           tft.fillRect(340, 40, 80, 20, GREY);
           tft.setCursor(340, 40);
           tft.setTextColor(BLACK);
+          tft.setTextSize(2);
           tft.print("HP: ");
           tft.print(e->getHP());
           for (int i = 0; i < 50; i++) {
@@ -399,6 +399,13 @@ void Battle(Enemy* e) {
     }
     if (e->getHP() == 0) { //win battle!
       inCombat = false;
+      battlePhase = false;
+      current->setEnemy(NULL);
+      tft.fillScreen(GREY);
+      RoomRender(current);
+      SidebarRender();
+      tft.fillRect(xPos, yPos, WIDTH, WIDTH, WHITE);
+      return;
     }
     //enemy turn
     int DMG = 2 * e->getATK() * DMG_MULTI * (1/(float)def);
@@ -407,6 +414,9 @@ void Battle(Enemy* e) {
       tft.fillRect(380 - ((i - 1) * 3), 160 - (e->getWidth() * 2), 3, e->getWidth() * 2, GREY);
       delay(5);
     }
+    health -= DMG;
+    if (health < 0) health = 0; //lose
+    SidebarRender();
     for (int i = 0; i < 50; i++) {
       tft.fillRect(230 - e->getWidth() * 2 + (i * 3), 160 - (e->getWidth() * 2), e->getWidth() * 2, e->getWidth() * 2, RED);
       tft.fillRect(230 - e->getWidth() * 2 + ((i - 1) * 3), 160 - (e->getWidth() * 2), 3, e->getWidth() * 2, GREY);
@@ -462,7 +472,6 @@ void OpenChest() {
           tft.print("Equipped: ");
           tft.print(wielding->getName());
         } else if (current->getItem()->getType() == SCROLL) {
-          Serial.print("hello");
           tft.fillRect(200, 240, 280, 80, BLACK);
           tft.print("Select a scroll slot");
           tft.setCursor(215, 260);
