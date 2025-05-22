@@ -260,12 +260,15 @@ void setup() {
   Item* sword = new Item("Sword", 4, 20, 0, WEAPON);
 
   Item* infScroll = new Item("Infernal Scroll", 8, 0, 10, SCROLL);
+  Item* frostScroll = new Item("Frostbitten Scroll", 3, 10, 6, SCROLL);
 
   wielding = dagger;
 
   Room* entrance = new Room();
   Room* R1 = new Room();
   Room* R2 = new Room();
+  Room* R3 = new Room();
+  Room* R4 = new Room();
   
   //entrance
   entrance->setEast(R1);
@@ -273,11 +276,24 @@ void setup() {
   Enemy* e1 = new Enemy(TROLL);
   entrance->setEnemy(e1);
   //r1
+  R1->setEast(R4);
   R1->setWest(entrance);
   R1->setNorth(R2);
   //r2
   R2->setSouth(R1);
+  R2->setEast(R3);
   R2->addItem(infScroll);
+  //r3
+  R3->setWest(R2);
+  R3->setSouth(R4);
+  R3->addItem(frostScroll);
+  Enemy* e2 = new Enemy(GOBLIN);
+  R3->setEnemy(e2);
+  //r4
+  R4->setNorth(R3);
+  R4->setWest(R1);
+  Enemy* e3 = new Enemy(SKELE);
+  R4->setEnemy(e3);
 
   current = entrance;
   RoomRender(current);
@@ -421,6 +437,13 @@ bool Encounter(Enemy* e) {
 bool buttonDown;
 bool chestOpened = false;
 
+struct Node {
+  Item* it = NULL;
+  Node* next = NULL;
+};
+
+Node* head = NULL;
+
 void OpenChest() {
   if ((xPos >= 318 && xPos <= 392 && yPos <= 72) && (current->isChest())) {
     if (digitalRead(12) == HIGH && buttonDown == false) {
@@ -492,15 +515,18 @@ void OpenChest() {
                 tft.setCursor(210, 250);
                 tft.print("Equipped: ");
                 tft.print(temp->getName());  
+                current->removeItem();
               }
               scrolling = false;
               buttonDown = true;
+              chestOpened = false;
             }
           }
         } else {
           tft.print("Obtained: ");
           tft.print(current->getItem()->getName());
-          //add to inventory...IMPLEMENT LINKED LIST
+          addToInv(current->getItem());
+          current->removeItem();
         }
       } else {
         tft.fillRect(200, 240, 280, 80, BLACK);
@@ -532,6 +558,16 @@ void OpenChest() {
   if (digitalRead(12) == LOW) {
     buttonDown = false;
   }
+}
+
+void addToInv(Item* item) {
+  Node* cur = head;
+  while (cur->next != NULL) {
+    cur = cur->next; //sets cur to the last node in the inventory
+  }
+  Node* N = new Node(); //make new node, set item to the room's item
+  N->it = item;
+  cur->next = N;
 }
 
 void ChangeRooms() {
