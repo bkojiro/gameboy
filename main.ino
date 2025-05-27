@@ -1,3 +1,4 @@
+
 #include <Adafruit_GFX.h>
 #include <Adafruit_TFTLCD.h>
 
@@ -262,6 +263,9 @@ void setup() {
   Item* infScroll = new Item("Infernal Scroll", 8, 0, 10, SCROLL);
   Item* frostScroll = new Item("Frostbitten Scroll", 3, 10, 6, SCROLL);
 
+  Item* scrolls[] = {infScroll, frostScroll}; //FIND OUT HOW TO MAKE LOOP ACCESS TS
+  const char* attackNames[] = {"SPITFIRE", "COLD STARE"};
+
   wielding = dagger;
 
   Room* entrance = new Room();
@@ -389,7 +393,21 @@ void Battle(Enemy* e) {
             delay(5);
           }
         } else if (option == MAGIC) {
+          tft.fillRect(0, 160, 480, 80, DARKGREY);
+          tft.setTextColor(WHITE);
+          tft.setCursor(60, 190);
+          if (!scroll1) {
+            tft.print("EMPTY");
+          } else {
+            for (int a = 0; a < scrolls.length(); a++) {
 
+            }
+          }
+          tft.setCursor(210, 190);
+          tft.print("MAGIC");
+          tft.setCursor(360, 190);
+          tft.print("ITEM");
+          tft.fillRect(40, 192, 10, 10, WHITE);
         } else if (option == ITEM) {
 
         }
@@ -425,6 +443,12 @@ void Battle(Enemy* e) {
     turn = PLAYER;
     if (health == 0) { //lose battle
       inCombat = false;
+      tft.fillScreen(BLACK);
+      tft.setCursor(160, 160);
+      tft.setTextSize(3);
+      tft.setTextColor(RED);
+      tft.print("YOU DIED");
+      while(!inCombat) {}
     }
   }
 }
