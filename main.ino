@@ -335,24 +335,24 @@ void Battle(Enemy* e) {
   tft.setTextColor(BLACK);
   tft.print("HP: ");
   tft.print(e->getHP());
-  //option text
-  battle:
-  tft.fillRect(0, 160, 480, 80, DARKGREY); //ground
-  tft.setTextColor(WHITE);
-  tft.setCursor(60, 190);
-  tft.print("SMITE");
-  tft.setCursor(210, 190);
-  tft.print("MAGIC");
-  tft.setCursor(360, 190);
-  tft.print("ITEM");
-  tft.fillRect(40, 192, 10, 10, WHITE);
   
   int SMITE = 1; int MAGIC = 2; int ITEM = 3;
   int option = SMITE;
   int PLAYER = 0; int ENEMY = 1;
   int turn = PLAYER;
-  while (inCombat) {     
-    //player turn
+  while (inCombat) { //player turn
+    //option text
+    tft.setTextSize(2);
+    tft.fillRect(0, 160, 480, 80, DARKGREY); //ground
+    tft.setTextColor(WHITE);
+    tft.setCursor(60, 190);
+    tft.print("SMITE");
+    tft.setCursor(210, 190);
+    tft.print("MAGIC");
+    tft.setCursor(360, 190);
+    tft.print("ITEM");
+    tft.fillRect(40, 192, 10, 10, WHITE);
+
     while (turn == PLAYER) {
       int xMove = map(analogRead(A6), 50, 300, 1, -1);
       delay(100);
@@ -446,11 +446,41 @@ void Battle(Enemy* e) {
             }
             if (digitalRead(12) == HIGH) {
               if (option == 1 && scroll1Enabled) { //scroll 1
-                turn = ENEMY;
+                if (mana >= scroll1->getSpecial()) {
+                  mana -= scroll1->getSpecial();
+                  int DMG = round(scroll1->getDMG() * atk * (1/((float)e->getDEF()))); //UPDATE ENEMY HEALTH!!!!
+                  if (scroll1 == scrolls[1]) { //frostbitten scroll
+                    if (e->getDEF() > 4) {
+                      e->setDEF(e->getDEF() - 4);
+                    } else {
+                      e->setDEF(1);
+                    }
+                  }
+                  turn = ENEMY;
+                } else {
+                  tft.fillRect(200, 240, 280, 80, BLACK);
+                  tft.setTextSize(1);
+                  tft.setTextColor(WHITE);
+                  tft.setCursor(210, 250);
+                  tft.print("Not enough MANA!");
+                }
               } else if (option == 2 && scroll2Enabled) { //scroll 2
+                int DMG = round(scroll2->getDMG() * atk * (1/((float)e->getDEF())));
+
                 turn = ENEMY;
               } else if (option == 3) { //back
-                goto battle;
+                  tft.setTextSize(2);
+                  tft.fillRect(0, 160, 480, 80, DARKGREY); //ground
+                  tft.setTextColor(WHITE);
+                  tft.setCursor(60, 190);
+                  tft.print("SMITE");
+                  tft.setCursor(210, 190);
+                  tft.print("MAGIC");
+                  tft.setCursor(360, 190);
+                  tft.print("ITEM");
+                  tft.fillRect(40, 192, 10, 10, WHITE);
+                  option = 1;
+                  break;
               }
             }
             delay(100);
