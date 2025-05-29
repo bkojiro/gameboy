@@ -1,4 +1,3 @@
-
 #include <Adafruit_GFX.h>
 #include <Adafruit_TFTLCD.h>
 
@@ -234,6 +233,9 @@ Item* wielding;
 Item* scroll1;
 Item* scroll2;
 
+Item** scrolls = new Item*[2];
+const char* attackNames[] = {"SPITFIRE", "COLD STARE"}; //library
+
 Room* current;
 bool textDisplayed;
 bool touchingChest;
@@ -261,10 +263,9 @@ void setup() {
   Item* sword = new Item("Sword", 4, 20, 0, WEAPON);
 
   Item* infScroll = new Item("Infernal Scroll", 8, 0, 10, SCROLL);
+  scrolls[0] = infScroll;
   Item* frostScroll = new Item("Frostbitten Scroll", 3, 10, 6, SCROLL);
-
-  Item* scrolls[] = {infScroll, frostScroll}; //FIND OUT HOW TO MAKE LOOP ACCESS TS
-  const char* attackNames[] = {"SPITFIRE", "COLD STARE"};
+  scrolls[1] = frostScroll;
 
   wielding = dagger;
 
@@ -320,7 +321,6 @@ void loop() {
 
 void Battle(Enemy* e) {
   tft.fillRect(0, 0, 480, 240, GREY); //bg
-  tft.fillRect(0, 160, 480, 80, DARKGREY); //ground
   tft.fillRect(100, 120, WIDTH * 2, WIDTH * 2, WHITE); //player
   tft.fillRect(380 - (e->getWidth() * 2), 160 - (e->getWidth() * 2), e->getWidth() * 2, e->getWidth() * 2, RED); //enemy
   //player/enemy text
@@ -336,6 +336,8 @@ void Battle(Enemy* e) {
   tft.print("HP: ");
   tft.print(e->getHP());
   //option text
+  battle:
+  tft.fillRect(0, 160, 480, 80, DARKGREY); //ground
   tft.setTextColor(WHITE);
   tft.setCursor(60, 190);
   tft.print("SMITE");
@@ -353,6 +355,7 @@ void Battle(Enemy* e) {
     //player turn
     while (turn == PLAYER) {
       int xMove = map(analogRead(A6), 50, 300, 1, -1);
+      delay(100);
       if (xMove == 1) {
         if (option != ITEM) {
           tft.fillRect(40 + (150 * (option - 1)), 192, 10, 10, DARKGREY);
@@ -392,28 +395,70 @@ void Battle(Enemy* e) {
             tft.fillRect(250 + WIDTH * 2 - ((i - 1) * 3), 120, 3, WIDTH * 2, GREY);
             delay(5);
           }
+          turn = ENEMY;
         } else if (option == MAGIC) {
           tft.fillRect(0, 160, 480, 80, DARKGREY);
           tft.setTextColor(WHITE);
           tft.setCursor(60, 190);
+          bool scroll1Enabled = false;
+          bool scroll2Enabled = false;
           if (!scroll1) {
             tft.print("EMPTY");
           } else {
-            for (int a = 0; a < scrolls.length(); a++) {
-
+            for (int a = 0; a <= sizeof(scrolls)/sizeof(scrolls[0]); a++) {
+              if (scroll1 == scrolls[a]) {
+                tft.print(attackNames[a]);
+                scroll1Enabled = true;
+                break;
+              }
             }
           }
           tft.setCursor(210, 190);
-          tft.print("MAGIC");
+          if (!scroll2) {
+            tft.print("EMPTY");
+          } else {
+            for (int a = 0; a <= sizeof(scrolls)/sizeof(scrolls[0]); a++) {
+              if (scroll2 == scrolls[a]) {
+                tft.print(attackNames[a]);
+                scroll2Enabled = true;
+                break;
+              }
+            }
+          }
           tft.setCursor(360, 190);
-          tft.print("ITEM");
+          tft.print("BACK");
           tft.fillRect(40, 192, 10, 10, WHITE);
+          option = 1;
+          while (turn == PLAYER) {
+            int xMove = map(analogRead(A6), 50, 300, 1, -1);
+            if (xMove == 1) {
+              if (option != 3) {
+                tft.fillRect(40 + (150 * (option - 1)), 192, 10, 10, DARKGREY);
+                tft.fillRect(40 + (150 * option), 192, 10, 10, WHITE);
+                option++;
+              }
+            } else if (xMove == -1) {
+              if (option != 1) {
+                tft.fillRect(40 + (150 * (option - 1)), 192, 10, 10, DARKGREY);
+                tft.fillRect(40 + (150 * (option - 2)), 192, 10, 10, WHITE);
+                option--;
+              }
+            }
+            if (digitalRead(12) == HIGH) {
+              if (option == 1 && scroll1Enabled) { //scroll 1
+                turn = ENEMY;
+              } else if (option == 2 && scroll2Enabled) { //scroll 2
+                turn = ENEMY;
+              } else if (option == 3) { //back
+                goto battle;
+              }
+            }
+            delay(100);
+          }
         } else if (option == ITEM) {
 
         }
-        turn = ENEMY;
       }
-      delay(100);
     }
     if (e->getHP() == 0) { //win battle!
       inCombat = false;
@@ -548,7 +593,7 @@ void OpenChest() {
                 tft.setCursor(210, 250);
                 tft.print("Equipped: ");
                 tft.print(temp->getName());  
-                current->removeItem();
+                //current->removeItem();
               }
               scrolling = false;
               buttonDown = true;
