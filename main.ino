@@ -60,9 +60,6 @@ class Item {
   ItemType itemType;
 };
 
-Item* Potion = new Item("Life Potion", 0, 0, 10, CONSUMABLE);
-Item* MPotion = new Item("Mana Potion", 0, 0, 10, CONSUMABLE);
-
 enum EnemyType{GOBLIN, SKELE, TROLL, MINOTAUR, LICH};
 
 class Enemy {
@@ -232,6 +229,8 @@ int crit = 10;
 Item* wielding;
 Item* scroll1;
 Item* scroll2;
+int lifePots = 0;
+int manaPots = 0;
 
 Item** scrolls = new Item*[2];
 const char* attackNames[] = {"SPITFIRE", "COLD STARE"}; //library
@@ -267,6 +266,9 @@ void setup() {
   Item* frostScroll = new Item("Frostbitten Scroll", 3, 10, 6, SCROLL);
   scrolls[1] = frostScroll;
 
+  Item* lifePot = new Item("Ambrosia", 0, 0, 10, CONSUMABLE);
+  Item* manaPot = new Item("Elixir", 0, 0, 10, CONSUMABLE);
+
   wielding = dagger;
 
   Room* entrance = new Room();
@@ -284,7 +286,6 @@ void setup() {
   R1->setEast(R4);
   R1->setWest(entrance);
   R1->setNorth(R2);
-  R1->addItem(new Item(Potion)); //fix this
   //r2
   R2->setSouth(R1);
   R2->setEast(R3);
@@ -292,7 +293,7 @@ void setup() {
   //r3
   R3->setWest(R2);
   R3->setSouth(R4);
-  R3->addItem(frostScroll);
+  R3->addItem(lifePot);
   Enemy* e2 = new Enemy(GOBLIN);
   R3->setEnemy(e2);
   //r4
@@ -484,34 +485,119 @@ void Battle(Enemy* e) {
                   tft.print("Not enough MANA!");
                 }
               } else if (option == 2 && scroll2Enabled) { //scroll 2
-                mana -= scroll2->getSpecial();
-                int DMG = round(scroll2->getDMG() * atk * (1/((float)e->getDEF())));
-                if (scroll1 == scrolls[1]) { //frostbitten scroll
-                  if (e->getDEF() > 4) {
-                    e->setDEF(e->getDEF() - 4);
-                  } else {
-                    e->setDEF(1);
+                if (mana >= scroll2->getSpecial()) {
+                  mana -= scroll2->getSpecial();
+                  int DMG = round(scroll2->getDMG() * atk * (1/((float)e->getDEF())));
+                  if (scroll1 == scrolls[1]) { //frostbitten scroll
+                    if (e->getDEF() > 4) {
+                      e->setDEF(e->getDEF() - 4);
+                    } else {
+                      e->setDEF(1);
+                    }
                   }
+                  for (int i = 0; i < 50; i++) { //animation
+                    tft.fillRect(100 + (i * 3), 120, WIDTH * 2, WIDTH * 2, WHITE);
+                    tft.fillRect(100 + ((i - 1) * 3), 120, 3, WIDTH * 2, GREY);
+                    delay(5);
+                  }
+                  e->setHP(e->getHP() - DMG);
+                  if (e->getHP() < 0) e->setHP(0);
+                  tft.fillRect(340, 40, 80, 20, GREY);
+                  tft.setCursor(340, 40);
+                  tft.setTextColor(BLACK);
+                  tft.setTextSize(2);
+                  tft.print("HP: ");
+                  tft.print(e->getHP());
+                  for (int i = 0; i < 50; i++) { //animation
+                    tft.fillRect(250 - (i * 3), 120, WIDTH * 2, WIDTH * 2, WHITE);
+                    tft.fillRect(250 + WIDTH * 2 - ((i - 1) * 3), 120, 3, WIDTH * 2, GREY);
+                    delay(5);
+                  }
+                  turn = ENEMY;
+                } else {
+                  tft.fillRect(200, 240, 280, 80, BLACK);
+                  tft.setTextSize(1);
+                  tft.setTextColor(WHITE);
+                  tft.setCursor(210, 250);
+                  tft.print("Not enough MANA!");
                 }
-                for (int i = 0; i < 50; i++) { //animation
-                  tft.fillRect(100 + (i * 3), 120, WIDTH * 2, WIDTH * 2, WHITE);
-                  tft.fillRect(100 + ((i - 1) * 3), 120, 3, WIDTH * 2, GREY);
-                  delay(5);
+              } else if (option == 3) { //back
+                  tft.setTextSize(2);
+                  tft.fillRect(0, 160, 480, 80, DARKGREY); //ground
+                  tft.setTextColor(WHITE);
+                  tft.setCursor(60, 190);
+                  tft.print("SMITE");
+                  tft.setCursor(210, 190);
+                  tft.print("MAGIC");
+                  tft.setCursor(360, 190);
+                  tft.print("ITEM");
+                  tft.fillRect(40, 192, 10, 10, WHITE);
+                  option = 1;
+                  break;
+              }
+              option = 1;
+            }
+            delay(100);
+          }
+        } else if (option == ITEM) {
+          tft.fillRect(0, 160, 480, 80, DARKGREY);
+          tft.setTextColor(WHITE);
+          tft.setCursor(60, 190);
+          tft.print("AMBROSIAx");
+          tft.print(lifePots);
+          tft.setCursor(210, 190);
+          tft.print("ELIXIRx");
+          tft.print(manaPots);
+          tft.setCursor(360, 190);
+          tft.print("BACK");
+          tft.fillRect(40, 192, 10, 10, WHITE);
+          option = 1;
+          while (turn == PLAYER) {
+            int xMove = map(analogRead(A6), 50, 300, 1, -1);
+            if (xMove == 1) {
+              if (option != 3) {
+                tft.fillRect(40 + (150 * (option - 1)), 192, 10, 10, DARKGREY);
+                tft.fillRect(40 + (150 * option), 192, 10, 10, WHITE);
+                option++;
+              }
+            } else if (xMove == -1) {
+              if (option != 1) {
+                tft.fillRect(40 + (150 * (option - 1)), 192, 10, 10, DARKGREY);
+                tft.fillRect(40 + (150 * (option - 2)), 192, 10, 10, WHITE);
+                option--;
+              }
+            }
+            if (digitalRead(12) == HIGH) {
+              if (option == 1) { //life pot
+                if (lifePots > 0) {
+                  //display health, indicate use
+                  health += 10;
+                  if (health > maxHealth) health = maxHealth;
+                  lifePots--;
+                  SidebarRender();                
+                  turn = ENEMY;
+                } else {
+                  tft.fillRect(200, 240, 280, 80, BLACK);
+                  tft.setTextSize(1);
+                  tft.setTextColor(WHITE);
+                  tft.setCursor(210, 250);
+                  tft.print("You don't have this item!");
                 }
-                e->setHP(e->getHP() - DMG);
-                if (e->getHP() < 0) e->setHP(0);
-                tft.fillRect(340, 40, 80, 20, GREY);
-                tft.setCursor(340, 40);
-                tft.setTextColor(BLACK);
-                tft.setTextSize(2);
-                tft.print("HP: ");
-                tft.print(e->getHP());
-                for (int i = 0; i < 50; i++) { //animation
-                  tft.fillRect(250 - (i * 3), 120, WIDTH * 2, WIDTH * 2, WHITE);
-                  tft.fillRect(250 + WIDTH * 2 - ((i - 1) * 3), 120, 3, WIDTH * 2, GREY);
-                  delay(5);
+              } else if (option == 2) { //mana pot
+                if (manaPots > 0) {
+                  //display health, indicate use
+                  mana += 10;
+                  if (mana > maxMana) mana = maxMana;
+                  manaPots--;
+                  SidebarRender();
+                  turn = ENEMY;
+                } else {
+                  tft.fillRect(200, 240, 280, 80, BLACK);
+                  tft.setTextSize(1);
+                  tft.setTextColor(WHITE);
+                  tft.setCursor(210, 250);
+                  tft.print("You don't have this item!");
                 }
-                turn = ENEMY;
               } else if (option == 3) { //back
                   tft.setTextSize(2);
                   tft.fillRect(0, 160, 480, 80, DARKGREY); //ground
@@ -529,8 +615,6 @@ void Battle(Enemy* e) {
             }
             delay(100);
           }
-        } else if (option == ITEM) {
-
         }
       }
     }
@@ -659,8 +743,7 @@ void OpenChest() {
                 tft.setTextColor(WHITE);
                 tft.setCursor(210, 250);
                 tft.print("Equipped: ");
-                tft.print(temp->getName());  
-                //current->removeItem();
+                tft.print(temp->getName());
               }
               scrolling = false;
               buttonDown = true;
@@ -668,7 +751,18 @@ void OpenChest() {
             }
           }
         } else {
-          //add to items
+          if (current->getItem()->getName() == "Ambrosia") { //life pot
+            lifePots++;
+          } else if (current->getItem()->getName() == "Elixir") {
+            manaPots++;
+          }
+          SidebarRender();
+          tft.setTextSize(1);
+          tft.setTextColor(WHITE);
+          tft.setCursor(210, 250);
+          tft.print("Acquired: ");
+          tft.print(current->getItem()->getName());
+          current->addItem(NULL);
         }
       } else {
         tft.fillRect(200, 240, 280, 80, BLACK);
@@ -871,10 +965,12 @@ void SidebarRender() {
   tft.setCursor(135, 275);
   tft.println(def);
   //weapon display
-  tft.setCursor(85, 300);
-  tft.println("WPN:");
+  tft.setCursor(85, 295);
   tft.setTextSize(1);
-  tft.setCursor(135, 300);
+  tft.setTextColor(BROWN);
+  tft.println("Wielding:");
+  tft.setCursor(85, 305);
+  tft.setTextColor(BLACK);
   if (wielding != NULL) {
     tft.println(wielding->getName());
   } else {
