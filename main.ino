@@ -284,6 +284,7 @@ void setup() {
   R1->setEast(R4);
   R1->setWest(entrance);
   R1->setNorth(R2);
+  R1->addItem(new Item(Potion)); //fix this
   //r2
   R2->setSouth(R1);
   R2->setEast(R3);
@@ -448,13 +449,31 @@ void Battle(Enemy* e) {
               if (option == 1 && scroll1Enabled) { //scroll 1
                 if (mana >= scroll1->getSpecial()) {
                   mana -= scroll1->getSpecial();
-                  int DMG = round(scroll1->getDMG() * atk * (1/((float)e->getDEF()))); //UPDATE ENEMY HEALTH!!!!
+                  int DMG = round(scroll1->getDMG() * atk * (1/((float)e->getDEF())));
                   if (scroll1 == scrolls[1]) { //frostbitten scroll
                     if (e->getDEF() > 4) {
                       e->setDEF(e->getDEF() - 4);
                     } else {
                       e->setDEF(1);
                     }
+                  }
+                  for (int i = 0; i < 50; i++) { //animation
+                    tft.fillRect(100 + (i * 3), 120, WIDTH * 2, WIDTH * 2, WHITE);
+                    tft.fillRect(100 + ((i - 1) * 3), 120, 3, WIDTH * 2, GREY);
+                    delay(5);
+                  }
+                  e->setHP(e->getHP() - DMG);
+                  if (e->getHP() < 0) e->setHP(0);
+                  tft.fillRect(340, 40, 80, 20, GREY);
+                  tft.setCursor(340, 40);
+                  tft.setTextColor(BLACK);
+                  tft.setTextSize(2);
+                  tft.print("HP: ");
+                  tft.print(e->getHP());
+                  for (int i = 0; i < 50; i++) { //animation
+                    tft.fillRect(250 - (i * 3), 120, WIDTH * 2, WIDTH * 2, WHITE);
+                    tft.fillRect(250 + WIDTH * 2 - ((i - 1) * 3), 120, 3, WIDTH * 2, GREY);
+                    delay(5);
                   }
                   turn = ENEMY;
                 } else {
@@ -465,8 +484,33 @@ void Battle(Enemy* e) {
                   tft.print("Not enough MANA!");
                 }
               } else if (option == 2 && scroll2Enabled) { //scroll 2
+                mana -= scroll2->getSpecial();
                 int DMG = round(scroll2->getDMG() * atk * (1/((float)e->getDEF())));
-
+                if (scroll1 == scrolls[1]) { //frostbitten scroll
+                  if (e->getDEF() > 4) {
+                    e->setDEF(e->getDEF() - 4);
+                  } else {
+                    e->setDEF(1);
+                  }
+                }
+                for (int i = 0; i < 50; i++) { //animation
+                  tft.fillRect(100 + (i * 3), 120, WIDTH * 2, WIDTH * 2, WHITE);
+                  tft.fillRect(100 + ((i - 1) * 3), 120, 3, WIDTH * 2, GREY);
+                  delay(5);
+                }
+                e->setHP(e->getHP() - DMG);
+                if (e->getHP() < 0) e->setHP(0);
+                tft.fillRect(340, 40, 80, 20, GREY);
+                tft.setCursor(340, 40);
+                tft.setTextColor(BLACK);
+                tft.setTextSize(2);
+                tft.print("HP: ");
+                tft.print(e->getHP());
+                for (int i = 0; i < 50; i++) { //animation
+                  tft.fillRect(250 - (i * 3), 120, WIDTH * 2, WIDTH * 2, WHITE);
+                  tft.fillRect(250 + WIDTH * 2 - ((i - 1) * 3), 120, 3, WIDTH * 2, GREY);
+                  delay(5);
+                }
                 turn = ENEMY;
               } else if (option == 3) { //back
                   tft.setTextSize(2);
@@ -546,13 +590,6 @@ bool Encounter(Enemy* e) {
 bool buttonDown;
 bool chestOpened = false;
 
-struct Node {
-  Item* it = NULL;
-  Node* next = NULL;
-};
-
-Node* head = NULL;
-
 void OpenChest() {
   if ((xPos >= 318 && xPos <= 392 && yPos <= 72) && (current->isChest())) {
     if (digitalRead(12) == HIGH && buttonDown == false) {
@@ -631,10 +668,7 @@ void OpenChest() {
             }
           }
         } else {
-          tft.print("Obtained: ");
-          tft.print(current->getItem()->getName());
-          addToInv(current->getItem());
-          current->removeItem();
+          //add to items
         }
       } else {
         tft.fillRect(200, 240, 280, 80, BLACK);
@@ -666,16 +700,6 @@ void OpenChest() {
   if (digitalRead(12) == LOW) {
     buttonDown = false;
   }
-}
-
-void addToInv(Item* item) {
-  Node* cur = head;
-  while (cur->next != NULL) {
-    cur = cur->next; //sets cur to the last node in the inventory
-  }
-  Node* N = new Node(); //make new node, set item to the room's item
-  N->it = item;
-  cur->next = N;
 }
 
 void ChangeRooms() {
